@@ -25,6 +25,7 @@ class Slot(name: String) extends FSM[SlotState, Data] with ActorLogging {
     }
   }
 
+
   when(Processing) {
     case Event(WalletSuccess(id), SpinOutcome(_, _, _, _, _, false)) => goto(SpinAwaiting) using Uninitialized
     case Event(WalletSuccess(id), data) => goto(PickAndClickAwaiting) using data
