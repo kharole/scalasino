@@ -20,8 +20,9 @@ package object model {
 
   case object Uninitialized extends Data
 
-  case class SpinOutcome(bet: BigDecimal, win: BigDecimal,
-                         r1: Integer, r2: Integer, r3: Integer, qualifiedForPickAndClick: Boolean) extends Data
+  case class SpinOutcome(bet: BigDecimal, win: BigDecimal, r1: Integer, r2: Integer, r3: Integer, qualifiedForPickAndClick: Boolean) extends Data
+
+  case class PickAndClickOutcome(bet: BigDecimal, win: BigDecimal) extends Data
 
   // received events
   final case class Spin(bet: BigDecimal)

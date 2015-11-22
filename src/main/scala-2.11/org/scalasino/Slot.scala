@@ -3,9 +3,7 @@ package org.scalasino
 import akka.actor._
 import org.scalasino.model._
 
-class Slot(name: String) extends FSM[SlotState, Data] with ActorLogging {
-
-  val r = scala.util.Random
+class Slot(name: String, r: RandomNumberGenerator) extends FSM[SlotState, Data] with ActorLogging {
 
   val walletClient = context.system.actorOf(Props(new WalletClient))
 
@@ -25,16 +23,21 @@ class Slot(name: String) extends FSM[SlotState, Data] with ActorLogging {
     }
   }
 
-
   when(Processing) {
-    case Event(WalletSuccess(id), SpinOutcome(_, _, _, _, _, false)) => goto(SpinAwaiting) using Uninitialized
-    case Event(WalletSuccess(id), data) => goto(PickAndClickAwaiting) using data
-    case Event(WalletFailure, data) => goto(PickAndClickAwaiting) using data
+    case Event(WalletSuccess(id), SpinOutcome(_, _, _, _, _, false)) =>
+      goto(SpinAwaiting) using Uninitialized
+    case Event(WalletSuccess(id), outcome) =>
+      goto(PickAndClickAwaiting) using outcome
   }
 
+  when(PickAndClickAwaiting) {
+    case Event(Pick(choice), SpinOutcome(bet, _, _, _, _, _)) => {
+      goto(Processing) using PickAndClickOutcome(bet, 0)
+    }
+  }
 
   onTransition {
-    case SpinAwaiting -> Processing =>
+    case _ -> Processing =>
       nextStateData match {
         case SpinOutcome(bet, win, _, _, _, _) =>
           walletClient ! BetAndWin(1, bet, win)
@@ -42,6 +45,7 @@ class Slot(name: String) extends FSM[SlotState, Data] with ActorLogging {
 
     case Processing -> _ =>
       s ! stateData
+
   }
 
 }
