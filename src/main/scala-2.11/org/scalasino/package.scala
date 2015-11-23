@@ -1,5 +1,7 @@
 package org.scalasino
 
+import akka.actor.ActorRef
+
 package object model {
 
   // === Slot states ============
@@ -20,15 +22,14 @@ package object model {
 
   case object Uninitialized extends Data
 
-  case class SpinOutcome(bet: BigDecimal, win: BigDecimal, r1: Integer, r2: Integer, r3: Integer, qualifiedForPickAndClick: Boolean) extends Data
+  case class SpinOutcome(client: ActorRef, bet: BigDecimal, win: BigDecimal, r1: Integer, r2: Integer, r3: Integer, qualifiedForPickAndClick: Boolean) extends Data
 
-  case class PickAndClickOutcome(bet: BigDecimal, win: BigDecimal) extends Data
+  case class PickAndClickOutcome(client: ActorRef, bet: BigDecimal, win: BigDecimal) extends Data
 
   // received events
   final case class Spin(bet: BigDecimal)
 
-  final case class Pick(choice: List[Integer])
-
+  final case class PickAndClick(choice: List[Integer])
 
   final case class WalletSuccess(id: Integer)
 

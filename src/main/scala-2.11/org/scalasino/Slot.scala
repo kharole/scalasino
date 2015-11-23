@@ -7,8 +7,6 @@ class Slot(name: String, r: RandomNumberGenerator) extends FSM[SlotState, Data] 
 
   val walletClient = context.system.actorOf(Props(new WalletClient))
 
-  var s: ActorRef = null
-
   startWith(SpinAwaiting, Uninitialized)
 
   when(SpinAwaiting) {
@@ -17,35 +15,36 @@ class Slot(name: String, r: RandomNumberGenerator) extends FSM[SlotState, Data] 
       val r2 = r.nextInt(7) + 1
       val r3 = r.nextInt(7) + 1
       val qualifiedForPickAndClick: Boolean = r1 == 7 && r2 == 7 && r3 == 7
-      s = sender();
       val win: BigDecimal = if (r1 == r2 && r2 == r3 && r3 == r1) bet * BigDecimal(r1 / 3) else 0
-      goto(Processing) using SpinOutcome(bet, win, r1, r2, r3, qualifiedForPickAndClick)
+      goto(Processing) using SpinOutcome(sender(), bet, win, r1, r2, r3, qualifiedForPickAndClick)
     }
   }
 
   when(Processing) {
-    case Event(WalletSuccess(id), SpinOutcome(_, _, _, _, _, false)) =>
+    case Event(WalletSuccess(id), SpinOutcome(_, _, _, _, _, _, false)) =>
       goto(SpinAwaiting) using Uninitialized
     case Event(WalletSuccess(id), outcome) =>
       goto(PickAndClickAwaiting) using outcome
   }
 
   when(PickAndClickAwaiting) {
-    case Event(Pick(choice), SpinOutcome(bet, _, _, _, _, _)) => {
-      goto(Processing) using PickAndClickOutcome(bet, 0)
+    case Event(PickAndClick(choice), SpinOutcome(_, bet, _, _, _, _, _)) => {
+      goto(Processing) using PickAndClickOutcome(sender(), bet, 0)
     }
   }
 
   onTransition {
     case _ -> Processing =>
       nextStateData match {
-        case SpinOutcome(bet, win, _, _, _, _) =>
+        case SpinOutcome(_, bet, win, _, _, _, _) =>
           walletClient ! BetAndWin(1, bet, win)
       }
 
     case Processing -> _ =>
-      s ! stateData
-
+      stateData match {
+        case SpinOutcome(client, _, _, _, _, _, _) => client ! stateData
+        case PickAndClickOutcome(client, _, _) => client ! stateData
+      }
   }
 
 }
