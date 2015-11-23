@@ -3,9 +3,7 @@ package org.scalasino
 import akka.actor._
 import org.scalasino.model._
 
-class Slot(name: String, r: RandomNumberGenerator) extends FSM[SlotState, Data] with ActorLogging {
-
-  val walletClient = context.system.actorOf(Props(new WalletClient))
+class Slot(name: String, r: RandomNumberGenerator, walletClient: ActorRef) extends FSM[SlotState, Data] with ActorLogging {
 
   startWith(SpinAwaiting, Uninitialized)
 

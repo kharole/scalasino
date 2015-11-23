@@ -1,7 +1,7 @@
 package org.scalasino
 
 
-import akka.actor.ActorSystem
+import akka.actor.{Props, ActorSystem}
 import akka.testkit.{ImplicitSender, TestFSMRef, TestKit}
 import org.scalasino.model.{PickAndClickAwaiting, Spin, SpinAwaiting, SpinOutcome}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
@@ -16,7 +16,8 @@ with MockFactory {
 
   val r = stub[RandomNumberGenerator]
 
-  val slot = TestFSMRef(new Slot("testSlot", r))
+  val walletClient = system.actorOf(Props(new WalletClient()))
+  val slot = TestFSMRef(new Slot("testSlot", r, walletClient))
 
   override def afterAll: Unit = system.terminate()
 
