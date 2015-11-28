@@ -6,6 +6,7 @@ import akka.testkit.{TestProbe, ImplicitSender, TestFSMRef, TestKit}
 import org.scalasino.model._
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 import org.scalamock.scalatest.MockFactory
+import scala.concurrent.duration._
 
 class SlotTest extends TestKit(ActorSystem("SlotTest"))
 with Matchers
@@ -40,5 +41,13 @@ with MockFactory {
       assert(slot.stateName == PickAndClickAwaiting)
     }
 
+    "long processing" in {
+      (r.nextInt _) when 7 returns 2
+      slot ! Spin(2.00)
+      walletClient.expectMsg(BetAndWin(1, 2.00, 2.00))
+      Thread.sleep(500)
+      walletClient.reply(WalletSuccess(1))
+      assert(slot.stateName == Unavailable)
+    }
   }
 }

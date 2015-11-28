@@ -1,7 +1,9 @@
 package org.scalasino
 
 import akka.actor._
+import akka.remote.RemoteActorRefProvider
 import org.scalasino.model._
+import scala.concurrent.duration._
 
 class Slot(name: String, r: RandomNumberGenerator, walletClient: ActorRef) extends FSM[SlotState, Data] with ActorLogging {
 
@@ -14,7 +16,7 @@ class Slot(name: String, r: RandomNumberGenerator, walletClient: ActorRef) exten
       val r3 = r.nextInt(7) + 1
       val qualifiedForPickAndClick: Boolean = r1 == 7 && r2 == 7 && r3 == 7
       val win: BigDecimal = if (r1 == r2 && r2 == r3 && r3 == r1) bet * BigDecimal(r1 / 3) else 0
-      goto(Processing) using SpinOutcome(sender(), bet, win, r1, r2, r3, qualifiedForPickAndClick)
+      goto(Processing) forMax (100 milliseconds) using SpinOutcome(sender(), bet, win, r1, r2, r3, qualifiedForPickAndClick)
     }
   }
 
@@ -29,6 +31,14 @@ class Slot(name: String, r: RandomNumberGenerator, walletClient: ActorRef) exten
     case Event(PickAndClick(choice), SpinOutcome(_, bet, _, _, _, _, _)) => {
       goto(Processing) using PickAndClickOutcome(sender(), bet, 0)
     }
+  }
+
+  when(Processing) {
+    case Event(StateTimeout, _) => goto(Unavailable) using Uninitialized
+  }
+
+  when(Unavailable) {
+    case Event(_, _) => goto(Unavailable) using Uninitialized replying("i'm knocked out")
   }
 
   onTransition {
