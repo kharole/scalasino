@@ -1,6 +1,7 @@
 package org.scalasino
 
 import akka.actor.ActorRef
+import akka.persistence.fsm.PersistentFSM.FSMState
 
 package object model {
 
@@ -37,4 +38,32 @@ package object model {
 
   final case class BetAndWin(id: Integer, bet: BigDecimal, win: BigDecimal)
 
+
+  sealed trait WalletClientState extends FSMState
+
+  case object TransactionAwaiting extends WalletClientState {
+    override def identifier: String = "TransactionAwaiting"
+  }
+
+  case object BetAttempting extends WalletClientState {
+    override def identifier: String = "BetAttempting"
+  }
+
+  case object BetRollingBack extends WalletClientState {
+    override def identifier: String = "BetRollingBack"
+  }
+
+  case object WinRetrying extends WalletClientState {
+    override def identifier: String = "WinRetrying"
+  }
+
+  sealed trait WalletClientData
+
+  case object WalletUninitialized extends WalletClientData
+
+  sealed trait WalletEvent
+
+  case object BetAndWinDone extends WalletEvent
+
+  case class BetAndWinArrived(id: Integer, bet: BigDecimal, win: BigDecimal) extends WalletEvent
 }
