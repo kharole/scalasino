@@ -18,16 +18,24 @@ with BeforeAndAfterAll
 with ImplicitSender
 with MockFactory {
 
-  val walletClient = system.actorOf(Props(classOf[WalletClient], "player1"), "testClient")
+  val wallet = TestProbe()
+  val walletClient = system.actorOf(Props(classOf[WalletClient], "player1", wallet.ref), "testClient")
 
   override def afterAll: Unit = system.terminate()
 
   "Wallet Client Actor" should {
-    "betAndWin" in {
-      //w ! BetAndWin(1, 1.00, 2.00)
-      walletClient ! "reset"
-      walletClient ! BetAndWin(2, 7.00, 13.00)
+    "send bet and win tx to wallet" in {
+      walletClient ! BetAndWin("2", 7.00, 13.00)
+      wallet.expectMsg(Tx("BET_2", 7.00))
+      wallet.reply(TxSuccess("BET_2"))
+      wallet.expectMsg(Tx("WIN_2", 13.00))
+      wallet.reply(TxSuccess("WIN_2"))
       expectMsg(BetAndWinDone)
+    }
+
+    "read journal" in {
+      walletClient ! "ReadJournal"
+      expectMsg("ok")
     }
 
   }
