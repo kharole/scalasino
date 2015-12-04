@@ -26,8 +26,8 @@ with MockFactory {
     "win 1x" in {
       (r.nextInt _) when 7 returns 2
       slot ! Spin(2.00)
-      walletClient.expectMsg(BetAndWin(1, 2.00, 2.00))
-      walletClient.reply(WalletSuccess(1))
+      walletClient.expectMsg(BetAndWin("1", 2.00, 2.00))
+      walletClient.reply(WalletSuccess("1"))
       expectMsg(SpinOutcome(self, 2.00, 2.00, 3, 3, 3, false))
       assert(slot.stateName == SpinAwaiting)
     }
@@ -35,8 +35,8 @@ with MockFactory {
     "get pick and click qualified" in {
       (r.nextInt _) when 7 returns 6
       slot ! Spin(2.00)
-      walletClient.expectMsg(BetAndWin(1, 2.00, 4.00))
-      walletClient.reply(WalletSuccess(1))
+      walletClient.expectMsg(BetAndWin("1", 2.00, 4.00))
+      walletClient.reply(WalletSuccess("1"))
       expectMsg(SpinOutcome(self, 2.00, 4.00, 7, 7, 7, true))
       assert(slot.stateName == PickAndClickAwaiting)
     }
@@ -44,9 +44,9 @@ with MockFactory {
     "long processing" in {
       (r.nextInt _) when 7 returns 2
       slot ! Spin(2.00)
-      walletClient.expectMsg(BetAndWin(1, 2.00, 2.00))
+      walletClient.expectMsg(BetAndWin("1", 2.00, 2.00))
       Thread.sleep(500)
-      walletClient.reply(WalletSuccess(1))
+      walletClient.reply(WalletSuccess("1"))
       assert(slot.stateName == Unavailable)
     }
   }

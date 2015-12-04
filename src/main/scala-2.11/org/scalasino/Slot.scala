@@ -45,7 +45,7 @@ class Slot(name: String, r: RandomNumberGenerator, walletClient: ActorRef) exten
     case _ -> Processing =>
       nextStateData match {
         case SpinOutcome(_, bet, win, _, _, _, _) =>
-          walletClient ! BetAndWin(1, bet, win)
+          walletClient ! BetAndWin("1", bet, win)
       }
 
     case Processing -> _ =>
