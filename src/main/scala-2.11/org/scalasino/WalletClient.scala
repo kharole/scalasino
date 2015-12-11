@@ -15,20 +15,28 @@ class WalletClient(playerId: String, wallet: ActorRef) extends PersistentFSM[Wal
 
   override def persistenceId: String = playerId
 
+  val maxRetryCount = 3;
+
   override implicit def domainEventClassTag = ClassTag(classOf[WalletEvent])
 
   startWith(TransactionAwaiting, WalletUninitialized)
 
   when(TransactionAwaiting) {
-    case Event(BetAndWin(id, bet, win), _) => goto(BetAttempting) applying (BetAndWinArrived(sender(), id, bet, win))
+    case Event(BetAndWin(id, bet, win), _) =>
+      goto(BetAttempting) applying (BetAndWinArrived(sender(), id, bet, win))
   }
 
   when(BetAttempting) {
-    case Event(TxSuccess(id), _) => goto(WinRetrying) applying (TxProcessingSucceed(id))
+    case Event(TxSuccess(id), _) => goto(WinRetrying) applying (BetSucceeded(id))
+    case Event(TxFailure(id), WalletProcessing(client, bets, wins, retryCount)) =>
+      if (retryCount > 0)
+        goto(BetAttempting) applying (BetFailed(id))
+      else
+        goto(BetRollingBack) applying (BetFailed(id))
   }
 
   when(WinRetrying) {
-    case Event(TxSuccess(id), _) => goto(TransactionAwaiting) applying (TxProcessingSucceed(id))
+    case Event(TxSuccess(id), _) => goto(TransactionAwaiting) applying (BetSucceeded(id))
   }
 
   whenUnhandled {
@@ -46,20 +54,20 @@ class WalletClient(playerId: String, wallet: ActorRef) extends PersistentFSM[Wal
   }
 
   onTransition {
-    case TransactionAwaiting -> BetAttempting =>
+    case _ -> BetAttempting =>
       nextStateData match {
-        case WalletProcessing(client, bets, wins) =>
+        case WalletProcessing(client, bets, wins, retryCount) =>
           wallet ! bets.head
       }
 
     case BetAttempting -> WinRetrying =>
       nextStateData match {
-        case WalletProcessing(client, bets, wins) => wallet ! wins.head
+        case WalletProcessing(client, bets, wins, retryCount) => wallet ! wins.head
       }
 
     case WinRetrying -> TransactionAwaiting =>
       stateData match {
-        case WalletProcessing(client, _, _) => client ! BetAndWinDone
+        case WalletProcessing(client, _, _, _) => client ! BetAndWinDone
       }
   }
 
@@ -74,16 +82,22 @@ class WalletClient(playerId: String, wallet: ActorRef) extends PersistentFSM[Wal
       case BetAndWinArrived(client, id, bet, win) => {
         val betTx = Tx("BET_" + id, bet)
         val winTx = Tx("WIN_" + id, win)
-        WalletProcessing(client, List(betTx), List(winTx))
+        WalletProcessing(client, List(betTx), List(winTx), maxRetryCount)
       }
 
-      case TxProcessingSucceed(id) => currentData match {
-        case WalletProcessing(client, bets, wins) => {
-          if (!bets.isEmpty && bets.head.id == id)
-            WalletProcessing(client, bets.tail, wins)
-          else
-            WalletUninitialized
-        }
+      case BetSucceeded(id) => currentData match {
+        case WalletProcessing(client, bh :: bt, wins, _) => WalletProcessing(client, bt, wins, maxRetryCount)
+        case WalletProcessing(client, Nil, wins, _) => WalletProcessing(client, Nil, wins, maxRetryCount)
+      }
+
+      case WinSucceeded(id) => currentData match {
+        case WalletProcessing(client, bets, wh :: wt, _) => WalletProcessing(client, bets, wt, maxRetryCount)
+        case WalletProcessing(client, bets, Nil, _) => WalletUninitialized
+      }
+
+      case BetFailed(id) => currentData match {
+        case WalletProcessing(client, bets, wins, retryCount) =>
+          WalletProcessing(client, bets, wins, retryCount - 1)
       }
 
       case WalletReset => WalletUninitialized

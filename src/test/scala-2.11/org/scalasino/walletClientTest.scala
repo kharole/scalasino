@@ -33,6 +33,17 @@ with MockFactory {
       expectMsg(BetAndWinDone)
     }
 
+    "retry bet on wallet failure" in {
+      walletClient ! BetAndWin("2", 7.00, 13.00)
+      wallet.expectMsg(Tx("BET_2", 7.00))
+      wallet.reply(TxFailure("BET_2"))
+      wallet.expectMsg(Tx("BET_2", 7.00))
+      wallet.reply(TxSuccess("BET_2"))
+      wallet.expectMsg(Tx("WIN_2", 13.00))
+      wallet.reply(TxSuccess("WIN_2"))
+      expectMsg(BetAndWinDone)
+    }
+
     "read journal" in {
       walletClient ! "ReadJournal"
       expectMsg("ok")
