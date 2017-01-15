@@ -32,11 +32,11 @@ package object model {
 
   final case class PickAndClick(choice: List[Integer])
 
-  final case class WalletSuccess(id: Integer)
+  final case class WalletSuccess(id: String)
 
   final case object WalletFailure
 
-  final case class BetAndWin(id: Integer, bet: BigDecimal, win: BigDecimal)
+  final case class BetAndWin(id: String, bet: BigDecimal, win: BigDecimal)
 
 
   sealed trait WalletClientState extends FSMState
@@ -61,9 +61,30 @@ package object model {
 
   case object WalletUninitialized extends WalletClientData
 
+  case class WalletProcessing(client: ActorRef, bets: List[Tx], wins: List[Tx], retryCount: Int) extends WalletClientData
+
   sealed trait WalletEvent
 
-  case object BetAndWinDone extends WalletEvent
+  case class BetAndWinDone(id: String) extends WalletEvent
 
-  case class BetAndWinArrived(id: Integer, bet: BigDecimal, win: BigDecimal) extends WalletEvent
+  case object WalletReset extends WalletEvent
+
+  case class BetAndWinArrived(client: ActorRef, id: String, bet: BigDecimal, win: BigDecimal) extends WalletEvent
+
+  case class BetSucceeded(id: String) extends WalletEvent
+
+  case class BetFailed(id: String) extends WalletEvent
+
+  case class WinSucceeded(id: String) extends WalletEvent
+
+  case class WinFailed(id: String) extends WalletEvent
+
+  case class Tx(id: String, amount: BigDecimal)
+
+  case class TxSuccess(id: String)
+
+  case class TxReject(id: String)
+
+  case class TxFailure(id: String)
+
 }
